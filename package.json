@@ -1,0 +1,11 @@
+{
+  "name": "abdelaziz-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "engines": { "node": ">=18" }
+}
