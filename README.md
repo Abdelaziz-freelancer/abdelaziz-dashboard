@@ -2,10 +2,10 @@
 
 بتتحكم في كل حاجة في الموقع (النصوص، الصور، النتايج، الآراء، الشريطين، روابط التواصل، أسئلة البريف) وبتستقبل البريفات.
 
-## متغيرات Vercel (Settings > Environment Variables) — لازم الثلاثة
+## متغيرات Vercel (Settings > Environment Variables)
 - `SUPABASE_URL` : Project URL
 - `SUPABASE_SERVICE_ROLE_KEY` : مفتاح service_role (سري!)
-- `ADMIN_PASSWORD` : الباسورد بتاعك (المدير الرئيسي)
+- `ADMIN_PASSWORD` : (اختياري) باسورد المدير. لو مضفتوش بيشتغل الباسورد الافتراضي اللي اتسلّمك. لو ضفته بيشتغل هو بدلها.
 
 بعد ما تضيفهم اعمل Redeploy.
 

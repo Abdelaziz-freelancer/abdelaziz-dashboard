@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { ALL, db, missing, same, sign } from './_utils.js';
+import { ALL, checkMaster, db, missing, sign } from './_utils.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (m.length) return res.status(500).json({ error: 'ناقص في Vercel (Environment Variables): ' + m.join(' , ') });
   const { name = '', password = '' } = req.body || {};
   await new Promise((r) => setTimeout(r, 350));
-  if (password && same(password, process.env.ADMIN_PASSWORD)) {
+  if (checkMaster(password)) {
     const n = String(name).trim() || 'المدير';
     return res.json({ token: sign({ master: true, name: n }), me: { name: n, master: true, perms: ALL } });
   }

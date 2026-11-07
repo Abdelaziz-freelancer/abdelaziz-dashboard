@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { BUILTIN_ADMIN } from './_config.js';
 
 export const ALL = ['site', 'contact', 'results', 'reviews', 'ticker', 'questions', 'responses', 'admins'];
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const NEED = ['ADMIN_PASSWORD', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+const NEED = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
 
 export const missing = () => NEED.filter((k) => !process.env[k]);
 export const db = () => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const secret = () => crypto.createHash('sha256').update(`${process.env.ADMIN_PASSWORD}|${process.env.SUPABASE_SERVICE_ROLE_KEY}`).digest();
+const secret = () => crypto.createHash('sha256').update(`${process.env.ADMIN_PASSWORD || BUILTIN_ADMIN}|${process.env.SUPABASE_SERVICE_ROLE_KEY}`).digest();
 
 export function sign(payload) {
   const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 12 * 3600 * 1000 })).toString('base64url');
@@ -27,6 +28,15 @@ export const same = (a, b) => {
   const x = crypto.createHash('sha256').update(String(a)).digest(), y = crypto.createHash('sha256').update(String(b)).digest();
   return crypto.timingSafeEqual(x, y);
 };
+// كلمة سر المدير: لو ADMIN_PASSWORD متضاف في Vercel بيتستخدم هو، غير كده بنقارن بالـ hash الافتراضي
+export function checkMaster(pw) {
+  if (!pw) return false;
+  if (process.env.ADMIN_PASSWORD) return same(pw, process.env.ADMIN_PASSWORD);
+  const [alg, salt, hash] = String(BUILTIN_ADMIN).split('$');
+  if (alg !== 'scrypt' || !salt || !hash) return false;
+  const h = crypto.scryptSync(String(pw), Buffer.from(salt, 'hex'), 32), b = Buffer.from(hash, 'hex');
+  return h.length === b.length && crypto.timingSafeEqual(h, b);
+}
 export const can = (me, p) => !!me && (me.master || (me.perms || []).includes(p));
 
 // returns the admin (with fresh permissions) or sends an error and returns null

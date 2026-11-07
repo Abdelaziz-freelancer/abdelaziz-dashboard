@@ -7,10 +7,16 @@
     Array.prototype.slice.call(arguments, 2).flat(9).forEach(function (x) { if (x == null || x === false) return; e.append(x.nodeType ? x : document.createTextNode(x)); });
     return e;
   }
-  var S = { tok: sessionStorage.getItem('tok'), me: JSON.parse(sessionStorage.getItem('me') || 'null'), tab: null, site: '' };
+  var mem = {};
+  var store = {
+    get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return mem[k] || null; } },
+    set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) { mem[k] = v; } },
+    clear: function () { try { sessionStorage.clear(); } catch (e) {} mem = {}; }
+  };
+  var S = { tok: store.get('tok'), me: JSON.parse(store.get('me') || 'null'), tab: null, site: '' };
   var DEF = {}, app = $('#app'), tt;
   function toast(m, bad) { var t = $('#toast'); t.textContent = m; t.className = 'toast show' + (bad ? ' bad' : ''); clearTimeout(tt); tt = setTimeout(function () { t.className = 'toast'; }, 3400); }
-  function logout() { sessionStorage.clear(); S.tok = null; S.me = null; loginView(); }
+  function logout() { store.clear(); S.tok = null; S.me = null; loginView(); }
   async function api(path, body) {
     var r = await fetch('/api/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + S.tok }, body: JSON.stringify(body || {}) });
     var j = await r.json().catch(function () { return {}; });
@@ -276,7 +282,7 @@
       try {
         var r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: n.value, password: p.value }) }), j = await r.json().catch(function () { return {}; });
         if (!r.ok) throw new Error(j.error || 'حصلت مشكلة');
-        S.tok = j.token; S.me = j.me; sessionStorage.setItem('tok', j.token); sessionStorage.setItem('me', JSON.stringify(j.me)); boot();
+        S.tok = j.token; S.me = j.me; store.set('tok', j.token); store.set('me', JSON.stringify(j.me)); boot();
       } catch (e) { err.textContent = e.message; }
       b.disabled = false;
     } }, E('h1', {}, 'لوحة التحكم'), E('p', { class: 'sm', style: 'margin:0 0 18px' }, 'سجّل دخول عشان تتحكم في الموقع.'), E('label', { class: 'fld' }, E('span', {}, 'الاسم'), n), E('label', { class: 'fld' }, E('span', {}, 'الباسورد'), p), b, err));
