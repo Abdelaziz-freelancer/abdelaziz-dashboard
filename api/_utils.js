@@ -7,8 +7,12 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const NEED = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
 
 export const missing = () => NEED.filter((k) => !process.env[k]);
-export const db = () => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const secret = () => crypto.createHash('sha256').update(`${process.env.ADMIN_PASSWORD || BUILTIN_ADMIN}|${process.env.SUPABASE_SERVICE_ROLE_KEY}`).digest();
+// بنقبل الرابط حتى لو اتلصق بحاجات زيادة (مسافات، علامات تنصيص، /rest/v1، رابط الداش بورد...) ونخليه https://xxxx.supabase.co بس
+const clean = (v) => String(v || '').trim().replace(/^["']+|["']+$/g, '').trim();
+export const baseUrl = () => { const v = clean(process.env.SUPABASE_URL); try { return new URL(/^https?:\/\//i.test(v) ? v : 'https://' + v).origin; } catch { return v; } };
+const serviceKey = () => clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+export const db = () => createClient(baseUrl(), serviceKey(), { auth: { persistSession: false } });
+const secret = () => crypto.createHash('sha256').update(`${process.env.ADMIN_PASSWORD || BUILTIN_ADMIN}|${serviceKey()}`).digest();
 
 export function sign(payload) {
   const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 12 * 3600 * 1000 })).toString('base64url');
@@ -54,4 +58,13 @@ export async function guard(req, res, perm) {
   if (perm && !can(me, perm)) { res.status(403).json({ error: 'مفيش عندك صلاحية للقسم ده' }); return null; }
   return me;
 }
-export const fail = (res, e) => res.status(500).json({ error: (e && e.message) || 'خطأ في السيرفر' });
+const HINTS = [
+  [/invalid path specified/i, 'رابط Supabase (SUPABASE_URL) فيه حاجة زيادة. لازم يكون https://xxxx.supabase.co بس.'],
+  [/invalid api key|invalid jwt|jwt|apikey/i, 'مفتاح Supabase (SUPABASE_SERVICE_ROLE_KEY) غلط أو ناقص. انسخ الـ Secret key من Settings ← API Keys.'],
+  [/could not find the table|does not exist|schema cache/i, 'جداول القاعدة مش موجودة. شغّل ملف supabase-schema.sql في Supabase (SQL Editor).'],
+  [/fetch failed|enotfound|getaddrinfo/i, 'مش قادر يوصل لـ Supabase. راجع SUPABASE_URL.']
+];
+export const fail = (res, e) => {
+  const m = (e && e.message) || 'خطأ في السيرفر', h = HINTS.find((x) => x[0].test(m));
+  res.status(500).json({ error: h ? h[1] + ' (' + m + ')' : m });
+};
